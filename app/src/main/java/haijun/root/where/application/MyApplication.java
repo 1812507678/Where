@@ -17,6 +17,8 @@ public class MyApplication extends Application {
 
         locationinf = getSharedPreferences("configure",MODE_PRIVATE);
 
+        //百度地图初始化
         SDKInitializer.initialize(this);
+
     }
 }

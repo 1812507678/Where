@@ -11,13 +11,19 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.baidu.mapapi.map.BaiduMap;
@@ -61,6 +67,8 @@ import haijun.root.where.R;
 import haijun.root.where.application.MyApplication;
 import haijun.root.where.bean.HistoryLocation;
 import haijun.root.where.bean.LocationInformation;
+import haijun.root.where.util.DateDialog;
+import haijun.root.where.util.DateUtils;
 
 public class MapTraceActivity extends Activity {
     private static final String TAG = "MapTraceActivity";
@@ -106,7 +114,20 @@ public class MapTraceActivity extends Activity {
     private Overlay circleOverlay;
     private LinearLayout ll_map_more;
     private MyTraceOnclickListener myTraceOnclickListener;
+    private Button bt_map_tracestate;
+    private Button bt_map_traceshistory;
+    private RelativeLayout rl_map_righttrace;
+    private RelativeLayout rl_map_righthistory;
+    private TextView tv_map_nameordate;
 
+    private int year = 0;
+    private int month = 0;
+    private int day = 0;
+
+    private int startTime = 0;
+    private int endTime = 0;
+
+    private static int isProcessed = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,12 +151,21 @@ public class MapTraceActivity extends Activity {
     private void initView() {
 
         ImageView iv_map_nowloation = (ImageView) findViewById(R.id.iv_map_nowloation);
-
         LinearLayout ll_map_trace = (LinearLayout) findViewById(R.id.ll_map_trace);
         LinearLayout ll_map_fence = (LinearLayout) findViewById(R.id.ll_map_fence);
         LinearLayout ll_map_state = (LinearLayout) findViewById(R.id.ll_map_state);
-
         ll_map_more = (LinearLayout) findViewById(R.id.ll_map_more);
+
+        bt_map_tracestate = (Button) findViewById(R.id.bt_map_tracestate);
+        bt_map_traceshistory = (Button) findViewById(R.id.bt_map_traceshistory);
+        rl_map_righttrace = (RelativeLayout) findViewById(R.id.rl_map_righttrace);
+        rl_map_righthistory = (RelativeLayout) findViewById(R.id.rl_map_righthistory);
+        tv_map_nameordate = (TextView) findViewById(R.id.tv_map_nameordate);
+
+        LinearLayout ll_map_date = (LinearLayout) findViewById(R.id.ll_map_date);
+        LinearLayout ll_map_processe = (LinearLayout) findViewById(R.id.ll_map_date);
+        LinearLayout ll_map_mileage = (LinearLayout) findViewById(R.id.ll_map_date);
+
 
         myTraceOnclickListener = new MyTraceOnclickListener();
 
@@ -144,6 +174,13 @@ public class MapTraceActivity extends Activity {
         ll_map_fence.setOnClickListener(myTraceOnclickListener);
         ll_map_state.setOnClickListener(myTraceOnclickListener);
         ll_map_more.setOnClickListener(myTraceOnclickListener);
+
+        bt_map_tracestate.setOnClickListener(myTraceOnclickListener);
+        bt_map_traceshistory.setOnClickListener(myTraceOnclickListener);
+
+        ll_map_date.setOnClickListener(myTraceOnclickListener);
+        ll_map_processe.setOnClickListener(myTraceOnclickListener);
+        ll_map_mileage.setOnClickListener(myTraceOnclickListener);
 
     }
 
@@ -799,7 +836,8 @@ public class MapTraceActivity extends Activity {
                 //点击事件，显示追踪线路
                 case R.id.ll_map_trace:
                     mBaiduMap.clear();
-                    queryhisteryLocation();
+                    queryhisteryLocation();    //原始历史轨迹
+                    //queryProcessedHistoryTrack();   //纠偏后的历史轨迹
                     break;
                 //更多
                 case R.id.ll_map_more:
@@ -814,26 +852,109 @@ public class MapTraceActivity extends Activity {
                     mBaiduMap.clear();
                     queryProcessedHistoryTrack();
                     break;*/
-             //显示围栏
+                //显示围栏
                 case R.id.ll_map_fence:
                     showGeoFence();
                     break;
-                /*//新建围栏
+                //新建围栏
                 case R.id.ll_map_newfence:
                     mBaiduMap.setOnMapClickListener(mapClickListener);
                     setGeoFence();
-                    break;*/
+                    break;
                 //查询状态
                 case R.id.ll_map_state:
                     checkcurrentState();
                     break;
+                //轨迹追踪按钮
+                case R.id.bt_map_tracestate:
+                    bt_map_tracestate.setBackgroundColor(Color.parseColor("#87CEFA"));
+                    bt_map_traceshistory.setBackgroundColor(Color.parseColor("#FFFFFF"));
+                    rl_map_righttrace.setVisibility(View.VISIBLE);
+                    rl_map_righthistory.setVisibility(View.GONE);
+                    tv_map_nameordate.setText("马海军");
 
+                    break;
+                //历史轨迹按钮
+                case R.id.bt_map_traceshistory:
+                    bt_map_tracestate.setBackgroundColor(Color.parseColor("#FFFFFF"));
+                    bt_map_traceshistory.setBackgroundColor(Color.parseColor("#87CEFA"));
+                    rl_map_righttrace.setVisibility(View.GONE);
+                    rl_map_righthistory.setVisibility(View.VISIBLE);
+                    tv_map_nameordate.setText("2016-10-24");
+
+                    break;
+
+                case R.id.ll_map_date:
+                    chooseDate();
+                    break;
                 default:
                     break;
             }
         }
 
+
+
     }
+
+    private void chooseDate() {
+        // 选择日期
+        int[] date = null;
+        DisplayMetrics dm = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(dm);
+        int width = dm.widthPixels;
+        int height = dm.heightPixels;
+
+        if (year == 0 && month == 0 && day == 0) {
+            String curDate = DateUtils.getCurrentDate();
+            date = DateUtils.getYMDArray(curDate, "-");
+        }
+
+        if (date != null) {
+            year = date[0];
+            month = date[1];
+            day = date[2];
+        }
+
+        DateDialog dateDiolog = new DateDialog(this, new DateDialog.PriorityListener() {
+
+            public void refreshPriorityUI(String sltYear, String sltMonth,
+                                          String sltDay, DateDialog.CallBack back) {
+
+                Log.d("TGA", sltYear + sltMonth + sltDay);
+                year = Integer.parseInt(sltYear);
+                month = Integer.parseInt(sltMonth);
+                day = Integer.parseInt(sltDay);
+                String st = year + "年" + month + "月" + day + "日0时0分0秒";
+                String et = year + "年" + month + "月" + day + "日23时59分59秒";
+
+                startTime = Integer.parseInt(DateUtils.getTimeToStamp(st));
+                endTime = Integer.parseInt(DateUtils.getTimeToStamp(et));
+
+                back.execute();
+            }
+
+        }, new DateDialog.CallBack() {
+
+            public void execute() {
+
+                tv_map_nameordate.setText(" 当前日期 : " + year + "-" + month + "-" + day + " ");
+                // 选择完日期，根据是否纠偏发送轨迹查询请求
+                if (0 == isProcessed) {
+                    Toast.makeText(MapTraceActivity.this, "正在查询历史轨迹，请稍候", Toast.LENGTH_SHORT).show();
+                    queryhisteryLocation();
+                } else {
+                    Toast.makeText(MapTraceActivity.this, "正在查询纠偏后的历史轨迹，请稍候", Toast.LENGTH_SHORT).show();
+                    queryProcessedHistoryTrack();
+                }
+            }
+        }, year, month, day, width, height, "选择日期", 1);
+
+        Window window = dateDiolog.getWindow();
+        window.setGravity(Gravity.CENTER); // 此处可以设置dialog显示的位置
+        dateDiolog.setCancelable(true);
+        dateDiolog.show();
+    }
+
     private void showPopupWindow() {
         // 一个自定义的布局，作为显示的内容
         View contentView = LayoutInflater.from(MapTraceActivity.this).inflate(
