@@ -8,4 +8,9 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+
+    <style name="MyAppTheme" parent="@android:style/Theme.NoTitleBar">
+        <item name="android:windowBackground">@color/mybackground</item>
+    </style>
+
 </resources>

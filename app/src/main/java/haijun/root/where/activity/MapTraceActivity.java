@@ -114,11 +114,11 @@ public class MapTraceActivity extends Activity {
     private Overlay circleOverlay;
     private LinearLayout ll_map_more;
     private MyTraceOnclickListener myTraceOnclickListener;
-    private Button bt_map_tracestate;
-    private Button bt_map_traceshistory;
+    private TextView bt_map_tracestate;
+    private TextView bt_map_traceshistory;
     private RelativeLayout rl_map_righttrace;
     private RelativeLayout rl_map_righthistory;
-    private TextView tv_map_nameordate;
+    private TextView tv_map_currentdate;
 
     private int year = 0;
     private int month = 0;
@@ -156,11 +156,11 @@ public class MapTraceActivity extends Activity {
         LinearLayout ll_map_state = (LinearLayout) findViewById(R.id.ll_map_state);
         ll_map_more = (LinearLayout) findViewById(R.id.ll_map_more);
 
-        bt_map_tracestate = (Button) findViewById(R.id.bt_map_tracestate);
-        bt_map_traceshistory = (Button) findViewById(R.id.bt_map_traceshistory);
+        bt_map_tracestate = (TextView) findViewById(R.id.bt_map_tracestate);
+        bt_map_traceshistory = (TextView) findViewById(R.id.bt_map_traceshistory);
         rl_map_righttrace = (RelativeLayout) findViewById(R.id.rl_map_righttrace);
         rl_map_righthistory = (RelativeLayout) findViewById(R.id.rl_map_righthistory);
-        tv_map_nameordate = (TextView) findViewById(R.id.tv_map_nameordate);
+        tv_map_currentdate = (TextView) findViewById(R.id.tv_map_currentdate);
 
         LinearLayout ll_map_date = (LinearLayout) findViewById(R.id.ll_map_date);
         LinearLayout ll_map_processe = (LinearLayout) findViewById(R.id.ll_map_date);
@@ -867,20 +867,24 @@ public class MapTraceActivity extends Activity {
                     break;
                 //轨迹追踪按钮
                 case R.id.bt_map_tracestate:
-                    bt_map_tracestate.setBackgroundColor(Color.parseColor("#87CEFA"));
-                    bt_map_traceshistory.setBackgroundColor(Color.parseColor("#FFFFFF"));
+                    bt_map_tracestate.setBackgroundResource(R.drawable.bg_care_switch_lefton);
+                    bt_map_traceshistory.setBackgroundResource(R.drawable.bg_care_switch_rightoff);
+                    bt_map_tracestate.setTextColor(Color.parseColor("#FFFFFF"));
+                    bt_map_traceshistory.setTextColor(Color.parseColor("#9E9E9E"));
                     rl_map_righttrace.setVisibility(View.VISIBLE);
                     rl_map_righthistory.setVisibility(View.GONE);
-                    tv_map_nameordate.setText("马海军");
+
 
                     break;
                 //历史轨迹按钮
                 case R.id.bt_map_traceshistory:
-                    bt_map_tracestate.setBackgroundColor(Color.parseColor("#FFFFFF"));
-                    bt_map_traceshistory.setBackgroundColor(Color.parseColor("#87CEFA"));
+                    bt_map_tracestate.setBackgroundResource(R.drawable.bg_care_switch_leftoff);
+                    bt_map_traceshistory.setBackgroundResource(R.drawable.bg_care_switch_righton);
+                    bt_map_tracestate.setTextColor(Color.parseColor("#9E9E9E"));
+                    bt_map_traceshistory.setTextColor(Color.parseColor("#FFFFFF"));
                     rl_map_righttrace.setVisibility(View.GONE);
                     rl_map_righthistory.setVisibility(View.VISIBLE);
-                    tv_map_nameordate.setText("2016-10-24");
+
 
                     break;
 
@@ -937,7 +941,7 @@ public class MapTraceActivity extends Activity {
 
             public void execute() {
 
-                tv_map_nameordate.setText(" 当前日期 : " + year + "-" + month + "-" + day + " ");
+                tv_map_currentdate.setText(" 当前日期 : " + year + "-" + month + "-" + day + " ");
                 // 选择完日期，根据是否纠偏发送轨迹查询请求
                 if (0 == isProcessed) {
                     Toast.makeText(MapTraceActivity.this, "正在查询历史轨迹，请稍候", Toast.LENGTH_SHORT).show();
