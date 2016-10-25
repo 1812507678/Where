@@ -67,8 +67,10 @@ import haijun.root.where.R;
 import haijun.root.where.application.MyApplication;
 import haijun.root.where.bean.HistoryLocation;
 import haijun.root.where.bean.LocationInformation;
+import haijun.root.where.util.Contanst;
 import haijun.root.where.util.DateDialog;
 import haijun.root.where.util.DateUtils;
+import haijun.root.where.util.MyUtil;
 
 public class MapTraceActivity extends Activity {
     private static final String TAG = "MapTraceActivity";
@@ -127,7 +129,8 @@ public class MapTraceActivity extends Activity {
     private int startTime = 0;
     private int endTime = 0;
 
-    private static int isProcessed = 0;
+    private int traceState = Contanst.TRECE_STATE_NOPROCESSED;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -162,9 +165,12 @@ public class MapTraceActivity extends Activity {
         rl_map_righthistory = (RelativeLayout) findViewById(R.id.rl_map_righthistory);
         tv_map_currentdate = (TextView) findViewById(R.id.tv_map_currentdate);
 
+        LinearLayout iv_map_refresh = (LinearLayout) findViewById(R.id.iv_map_refresh);
         LinearLayout ll_map_date = (LinearLayout) findViewById(R.id.ll_map_date);
-        LinearLayout ll_map_processe = (LinearLayout) findViewById(R.id.ll_map_date);
-        LinearLayout ll_map_mileage = (LinearLayout) findViewById(R.id.ll_map_date);
+        LinearLayout ll_map_processe = (LinearLayout) findViewById(R.id.ll_map_processe);
+
+
+        tv_map_currentdate.setText("当前日期："+DateUtils.getCurrentDate());
 
 
         myTraceOnclickListener = new MyTraceOnclickListener();
@@ -178,9 +184,9 @@ public class MapTraceActivity extends Activity {
         bt_map_tracestate.setOnClickListener(myTraceOnclickListener);
         bt_map_traceshistory.setOnClickListener(myTraceOnclickListener);
 
+        iv_map_refresh.setOnClickListener(myTraceOnclickListener);
         ll_map_date.setOnClickListener(myTraceOnclickListener);
         ll_map_processe.setOnClickListener(myTraceOnclickListener);
-        ll_map_mileage.setOnClickListener(myTraceOnclickListener);
 
     }
 
@@ -353,7 +359,7 @@ public class MapTraceActivity extends Activity {
     private OnTrackListener onTrackListener = new OnTrackListener() {
         @Override
         public void onRequestFailedCallback(String s) {
-
+            MyUtil.hideDialog();
         }
 
         //轨迹中的每个位置点可拥有一系列开发者自定义的描述字段，如汽车的油量、发动机转速等，用以记录行程中的实时状态信息。
@@ -368,6 +374,7 @@ public class MapTraceActivity extends Activity {
         @Override
         public void onQueryHistoryTrackCallback(String s) {
             super.onQueryHistoryTrackCallback(s);
+            MyUtil.hideDialog();
             //返回数据格式为point点的数据集合
         /*{
             "status": 0,
@@ -382,42 +389,45 @@ public class MapTraceActivity extends Activity {
                 113.92966866732,
                         22.579549752609
                 ],
-"create_time": "2016-07-04 16:21:59",
-            "radius": 40,
-            "speed": 0,
-            "direction": 0
-    },
-    {
-        "loc_time": 1467620508,
-            "location": [
-        113.92966866732,
-                22.579549752609
-        ],
-*/
+                "create_time": "2016-07-04 16:21:59",
+                            "radius": 40,
+                            "speed": 0,
+                            "direction": 0
+                    },
+                    {
+                        "loc_time": 1467620508,
+                            "location": [
+                        113.92966866732,
+                                22.579549752609
+                        ],
+                */
 
-            Log.i(TAG,"OnTrackListener回调接口消息 : " + s);
-            Gson gson = new Gson();
-            HistoryLocation historyLocation = gson.fromJson(s, HistoryLocation.class);
-
-            latLngList = new ArrayList<>();
-            if (historyLocation != null && Double.parseDouble(historyLocation.status) == 0) {
-                if (historyLocation.points!= null) {
-                    Iterator<HistoryLocation.LocationPoint> iterator = historyLocation.points.iterator();
-
-                    while (iterator.hasNext()){
-                        HistoryLocation.LocationPoint locationPoint = iterator.next();
-                        String[] location = locationPoint.location;
-                        LatLng latLng = new LatLng(Double.parseDouble(location[1]),Double.parseDouble(location[0]));
-                        latLngList.add(latLng);
-                    }
-                }
-                double distance = Double.parseDouble(historyLocation.distance);
-                // 绘制历史轨迹
-                drawHistoryTrack(latLngList, distance);
-
-            }
+            dealDataToDrawTrack(s);
+            Log.i(TAG, "OnTrackListener回调接口消息 : " + s);
         }
     };
+
+    private void dealDataToDrawTrack(String data) {
+        Gson gson = new Gson();
+        HistoryLocation historyLocation = gson.fromJson(data, HistoryLocation.class);
+
+        latLngList = new ArrayList<>();
+        if (historyLocation != null && Double.parseDouble(historyLocation.status) == 0) {
+            if (historyLocation.points!= null) {
+                Iterator<HistoryLocation.LocationPoint> iterator = historyLocation.points.iterator();
+
+                while (iterator.hasNext()){
+                    HistoryLocation.LocationPoint locationPoint = iterator.next();
+                    String[] location = locationPoint.location;
+                    LatLng latLng = new LatLng(Double.parseDouble(location[1]),Double.parseDouble(location[0]));
+                    latLngList.add(latLng);
+                }
+            }
+            double distance = Double.parseDouble(historyLocation.distance);
+            // 绘制历史轨迹
+            drawHistoryTrack(latLngList, distance);
+        }
+    }
 
     /**
      * 查询纠偏后的历史轨迹
@@ -470,7 +480,7 @@ public class MapTraceActivity extends Activity {
             bmStart = BitmapDescriptorFactory.fromResource(R.drawable.icon_start);
             bmEnd = BitmapDescriptorFactory.fromResource(R.drawable.icon_end);
 
-// 添加起点图标
+            // 添加起点图标
             startMarker = new MarkerOptions()
                     .position(points.get(points.size() - 1)).icon(bmStart)
                     .zIndex(9).draggable(true);
@@ -827,7 +837,7 @@ public class MapTraceActivity extends Activity {
 
         @Override
         public void onClick(View v) {
-            switch (v.getId()){
+            switch (v.getId()) {
                 //点击事件，显示当前位置
                 case R.id.iv_map_nowloation:
                     mBaiduMap.clear();
@@ -885,19 +895,44 @@ public class MapTraceActivity extends Activity {
                     rl_map_righttrace.setVisibility(View.GONE);
                     rl_map_righthistory.setVisibility(View.VISIBLE);
 
+                    MyUtil.showDialog("正在查询轨迹", MapTraceActivity.this);
+                    queryHistoryTrack(1, "need_denoise=1,need_vacuate=1,need_mapmatch=0");
+
 
                     break;
 
+                //选择日期
                 case R.id.ll_map_date:
                     chooseDate();
+
                     break;
+
+                //轨迹纠偏
+                case R.id.ll_map_processe:
+                    String toastInf = "";
+                    if (traceState == Contanst.TRECE_STATE_PROCESSED) {
+                        //未纠偏
+                        toastInf = "正在查询轨迹";
+                        queryHistoryTrack(1, "need_denoise=1,need_vacuate=1,need_mapmatch=0");
+                    } else if (traceState == Contanst.TRECE_STATE_NOPROCESSED) {
+                        toastInf = "正在查询纠偏轨迹";
+                        queryHistoryTrack(1, "need_denoise=1,need_vacuate=1,need_mapmatch=1");
+
+                    }
+                    traceState = traceState == Contanst.TRECE_STATE_NOPROCESSED ? Contanst.TRECE_STATE_PROCESSED : Contanst.TRECE_STATE_NOPROCESSED;
+                    MyUtil.showDialog(toastInf, MapTraceActivity.this);
+                    break;
+
+                //刷新
+                case R.id.iv_map_refresh:
+                    MyUtil.showDialog("正在查询轨迹", MapTraceActivity.this);
+                    queryHistoryTrack(1, "need_denoise=1,need_vacuate=1,need_mapmatch=0");
+                    break;
+
                 default:
                     break;
             }
         }
-
-
-
     }
 
     private void chooseDate() {
@@ -940,16 +975,10 @@ public class MapTraceActivity extends Activity {
         }, new DateDialog.CallBack() {
 
             public void execute() {
-
+                traceState = Contanst.TRECE_STATE_NOPROCESSED;
                 tv_map_currentdate.setText(" 当前日期 : " + year + "-" + month + "-" + day + " ");
-                // 选择完日期，根据是否纠偏发送轨迹查询请求
-                if (0 == isProcessed) {
-                    Toast.makeText(MapTraceActivity.this, "正在查询历史轨迹，请稍候", Toast.LENGTH_SHORT).show();
-                    queryhisteryLocation();
-                } else {
-                    Toast.makeText(MapTraceActivity.this, "正在查询纠偏后的历史轨迹，请稍候", Toast.LENGTH_SHORT).show();
-                    queryProcessedHistoryTrack();
-                }
+                Toast.makeText(MapTraceActivity.this, "正在查询历史轨迹，请稍候", Toast.LENGTH_SHORT).show();
+                queryHistoryTrack(1,"need_denoise=1,need_vacuate=1,need_mapmatch=0");
             }
         }, year, month, day, width, height, "选择日期", 1);
 
@@ -958,6 +987,28 @@ public class MapTraceActivity extends Activity {
         dateDiolog.setCancelable(true);
         dateDiolog.show();
     }
+
+    private void queryHistoryTrack(int processed, String processOption) {
+        //是否返回精简的结果（0 : 将只返回经纬度，1 : 将返回经纬度及其他属性信息）
+        int simpleReturn = 0;
+        // 是否返回纠偏后轨迹（0 : 否，1 : 是）
+        int isProcessed = processed;
+        //分页大小
+        int pageSize = 1000;
+        //分页索引
+        int pageIndex = 1;
+        // 开始时间
+        if (startTime == 0) {
+            startTime = (int) (System.currentTimeMillis() / 1000 - 12 * 60 * 60);
+        }
+        if (endTime == 0) {
+            endTime = (int) (System.currentTimeMillis() / 1000);
+        }
+
+        //查询历史轨迹
+        client.queryHistoryTrack(serviceId, entityName, simpleReturn, isProcessed, processOption,startTime, endTime, pageSize, pageIndex, onTrackListener);
+    }
+
 
     private void showPopupWindow() {
         // 一个自定义的布局，作为显示的内容

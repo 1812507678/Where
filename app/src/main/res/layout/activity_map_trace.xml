@@ -76,6 +76,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="日期"
+        android:textColor="#000000"
         android:layout_alignParentRight="true"
         android:layout_marginRight="5dp"
         android:layout_marginTop="5dp"/>
@@ -86,7 +87,8 @@
         android:layout_width="55dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
-        android:layout_alignParentRight="true">
+        android:layout_alignParentRight="true"
+        android:visibility="gone">
         <LinearLayout
             android:id="@+id/ll_map_trace"
             android:layout_width="45dp"
@@ -187,11 +189,37 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
         android:layout_alignParentRight="true"
-        android:visibility="gone">
+
+        >
+
         <LinearLayout
-            android:id="@+id/ll_map_date"
+            android:id="@+id/iv_map_refresh"
+            android:layout_below="@id/iv_map_refresh"
             android:layout_width="45dp"
             android:layout_height="45dp"
+            android:layout_alignParentRight="true"
+            android:orientation="vertical"
+            android:layout_marginRight="10dp"
+            android:background="@drawable/bg_map_view"
+            android:gravity="center">
+            <ImageView
+                android:layout_width="25dp"
+                android:layout_height="20dp"
+                android:src="@drawable/refresh"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="刷新"
+                android:textColor="#6E6E6E"
+                android:textSize="10sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ll_map_date"
+            android:layout_below="@id/iv_map_refresh"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginTop="10dp"
             android:layout_alignParentRight="true"
             android:orientation="vertical"
             android:layout_marginRight="10dp"
@@ -233,29 +261,6 @@
                 android:textSize="10sp"/>
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/ll_map_mileage"
-            android:layout_below="@id/ll_map_processe"
-            android:layout_width="45dp"
-            android:layout_height="45dp"
-            android:layout_alignParentRight="true"
-            android:orientation="vertical"
-            android:layout_marginTop="10dp"
-            android:layout_marginRight="10dp"
-            android:background="@drawable/bg_map_view"
-            android:gravity="center"
-            android:padding="3dp">
-            <ImageView
-                android:layout_width="25dp"
-                android:layout_height="20dp"
-                android:src="@drawable/location_zoom_1"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="里程"
-                android:textColor="#6E6E6E"
-                android:textSize="10sp"/>
-        </LinearLayout>
 
     </RelativeLayout>
 
