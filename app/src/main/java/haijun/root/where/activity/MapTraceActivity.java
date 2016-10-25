@@ -71,6 +71,7 @@ import haijun.root.where.util.Contanst;
 import haijun.root.where.util.DateDialog;
 import haijun.root.where.util.DateUtils;
 import haijun.root.where.util.MyUtil;
+import haijun.root.where.util.ShowLocationOnMap;
 
 public class MapTraceActivity extends Activity {
     private static final String TAG = "MapTraceActivity";
@@ -153,10 +154,10 @@ public class MapTraceActivity extends Activity {
 
     private void initView() {
 
-        ImageView iv_map_nowloation = (ImageView) findViewById(R.id.iv_map_nowloation);
-        LinearLayout ll_map_trace = (LinearLayout) findViewById(R.id.ll_map_trace);
+        LinearLayout ll_map_frlocation = (LinearLayout) findViewById(R.id.ll_map_frlocation);
         LinearLayout ll_map_fence = (LinearLayout) findViewById(R.id.ll_map_fence);
         LinearLayout ll_map_state = (LinearLayout) findViewById(R.id.ll_map_state);
+        LinearLayout ll_map_mylocation = (LinearLayout) findViewById(R.id.ll_map_mylocation);
         ll_map_more = (LinearLayout) findViewById(R.id.ll_map_more);
 
         bt_map_tracestate = (TextView) findViewById(R.id.bt_map_tracestate);
@@ -175,10 +176,10 @@ public class MapTraceActivity extends Activity {
 
         myTraceOnclickListener = new MyTraceOnclickListener();
 
-        iv_map_nowloation.setOnClickListener(myTraceOnclickListener);
-        ll_map_trace.setOnClickListener(myTraceOnclickListener);
+        ll_map_frlocation.setOnClickListener(myTraceOnclickListener);
         ll_map_fence.setOnClickListener(myTraceOnclickListener);
         ll_map_state.setOnClickListener(myTraceOnclickListener);
+        ll_map_mylocation.setOnClickListener(myTraceOnclickListener);
         ll_map_more.setOnClickListener(myTraceOnclickListener);
 
         bt_map_tracestate.setOnClickListener(myTraceOnclickListener);
@@ -839,15 +840,16 @@ public class MapTraceActivity extends Activity {
         public void onClick(View v) {
             switch (v.getId()) {
                 //点击事件，显示当前位置
-                case R.id.iv_map_nowloation:
+                case R.id.ll_map_mylocation:
                     mBaiduMap.clear();
-                    queryEntityLocation();
+                    ShowLocationOnMap showLocationOnMap = new ShowLocationOnMap();
+                    showLocationOnMap.startLocation(MapTraceActivity.this,trace_bmapView);
+
                     break;
                 //点击事件，显示追踪线路
-                case R.id.ll_map_trace:
+                case R.id.ll_map_frlocation:
                     mBaiduMap.clear();
-                    queryhisteryLocation();    //原始历史轨迹
-                    //queryProcessedHistoryTrack();   //纠偏后的历史轨迹
+                    queryEntityLocation();
                     break;
                 //更多
                 case R.id.ll_map_more:

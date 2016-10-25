@@ -87,10 +87,9 @@
         android:layout_width="55dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
-        android:layout_alignParentRight="true"
-        android:visibility="gone">
+        android:layout_alignParentRight="true">
         <LinearLayout
-            android:id="@+id/ll_map_trace"
+            android:id="@+id/ll_map_frlocation"
             android:layout_width="45dp"
             android:layout_height="45dp"
             android:layout_alignParentRight="true"
@@ -101,18 +100,18 @@
             <ImageView
                 android:layout_width="25dp"
                 android:layout_height="20dp"
-                android:src="@drawable/location_zoom_3"/>
+                android:src="@drawable/location_on"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="轨迹"
+                android:text="好友"
                 android:textColor="#6E6E6E"
                 android:textSize="10sp"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/ll_map_fence"
-            android:layout_below="@id/ll_map_trace"
+            android:layout_below="@id/ll_map_frlocation"
             android:layout_width="45dp"
             android:layout_height="45dp"
             android:layout_alignParentRight="true"
@@ -125,7 +124,7 @@
             <ImageView
                 android:layout_width="25dp"
                 android:layout_height="20dp"
-                android:src="@drawable/location_zoom_2"/>
+                android:src="@drawable/color_circle"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -189,7 +188,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
         android:layout_alignParentRight="true"
-
+        android:visibility="gone"
         >
 
         <LinearLayout
@@ -228,7 +227,7 @@
             <ImageView
                 android:layout_width="25dp"
                 android:layout_height="20dp"
-                android:src="@drawable/location_zoom_3"/>
+                android:src="@drawable/date"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -252,7 +251,7 @@
             <ImageView
                 android:layout_width="25dp"
                 android:layout_height="20dp"
-                android:src="@drawable/location_zoom_2"/>
+                android:src="@drawable/right_arrow"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -265,12 +264,38 @@
     </RelativeLayout>
 
 
-    <ImageView
+    <!--<ImageView
         android:id="@+id/iv_map_nowloation"
         android:layout_width="39dp"
         android:layout_height="39dp"
         android:src="@drawable/bg_nowlocation"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="70dp"/>
+        android:layout_marginBottom="70dp"/>-->
+
+    <LinearLayout
+        android:id="@+id/ll_map_mylocation"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
+        android:orientation="vertical"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_map_view"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="70dp"
+        android:layout_marginLeft="5dp"
+        android:gravity="center"
+        android:clickable="true"
+        android:padding="3dp">
+        <ImageView
+            android:layout_width="30dp"
+            android:layout_height="25dp"
+            android:src="@drawable/my_location"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="我"
+            android:textColor="#6E6E6E"
+            android:textSize="10sp"/>
+    </LinearLayout>
+
 
 </RelativeLayout>
