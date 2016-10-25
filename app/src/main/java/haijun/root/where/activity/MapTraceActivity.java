@@ -111,7 +111,7 @@ public class MapTraceActivity extends Activity {
     // 围栏覆盖物
     protected static OverlayOptions fenceOverlay = null;
     protected static OverlayOptions fenceOverlayTemp = null;
-    private LatLng latLng;
+    //private LatLng latLng;
     private int curFence_id;
     private boolean isFenceshowing;
     private Overlay circleOverlay;
@@ -310,17 +310,9 @@ public class MapTraceActivity extends Activity {
                 //Log.i(TAG,"entity回调接口消息 : " + location[0]+","+location[1]);
                 double latitude =  Double.parseDouble(location[1]);
                 double longitude =  Double.parseDouble(location[0]);
-                latLng = new LatLng(latitude, longitude);
 
-                //在地图上显示所在位置
-                mBaiduMap.setMyLocationEnabled(true);  //设置为位置显示
-                MyLocationData.Builder localbuild = new MyLocationData.Builder();
-                localbuild.latitude(latitude);
-                localbuild.longitude(longitude);
-                MyLocationData myLocationData = localbuild.build();
-                mBaiduMap.setMyLocationData(myLocationData);
-                MapStatusUpdate msu = MapStatusUpdateFactory.newLatLngZoom(latLng, 17); //17为地图的显示比例，比例范围是3-19
-                mBaiduMap.animateMapStatus(msu);
+                //在地图上显示
+                ShowLocationOnMap.showPointOnMap(latitude,longitude,trace_bmapView);
             }
             //Entity实时定位回调接口
             @Override
@@ -597,6 +589,7 @@ public class MapTraceActivity extends Activity {
             mBaiduMap.addOverlay(polyline);
         }
     }
+
     //围栏监听器
     private OnGeoFenceListener onGeoFenceListener = new OnGeoFenceListener() {
         //请求失败回调接口
@@ -672,13 +665,6 @@ public class MapTraceActivity extends Activity {
                 e.printStackTrace();
             }
         }
-        /*//延迟报警回调接口
-        @Override
-        public void onDelayAlarmCallback(String arg0) {
-            Log.i(TAG,"延迟报警回调接口消息 : " + arg0);
-        }*/
-
-
 
         //删除围栏回调接口
         @Override
@@ -698,7 +684,7 @@ public class MapTraceActivity extends Activity {
                 JSONObject jsonObject1 = (JSONObject) fences.get(0);
                 int fence_id = jsonObject1.getInt("fence_id");
                 Log.i(TAG,"fence_id:"+fence_id);
-//查询成功
+               //查询成功
                 if (status==0){
                     if (fence_id==curFence_id){
                         int radius = jsonObject1.getInt("radius");
@@ -726,14 +712,14 @@ public class MapTraceActivity extends Activity {
         @Override
         public void onQueryHistoryAlarmCallback(String arg0) {
             Log.i(TAG," 查询历史报警回调接口消息 : " + arg0);
-    /*返回数据格式  ，具体看http://lbsyun.baidu.com/index.php?title=yingyan/api/fence
-    {
-        "status": 0,
-        "message": "成功",
-        "size": 0,
-        "monitored_person_alarms": []
-    }
-*/
+            /*返回数据格式  ，具体看http://lbsyun.baidu.com/index.php?title=yingyan/api/fence
+            {
+                "status": 0,
+                "message": "成功",
+                "size": 0,
+                "monitored_person_alarms": []
+            }
+             */
             try {
                 JSONObject jsonObject = new JSONObject(arg0);
                 int status = jsonObject.getInt("status");
@@ -770,19 +756,19 @@ public class MapTraceActivity extends Activity {
         @Override
         public void onQueryMonitoredStatusCallback(String arg0) {
             Log.i(TAG," 查询监控对象状态回调接口消息    : " + arg0);
-   /* 返回数据格式
-   {
-        "status": 0,
-        "message": "成功",
-        "size": 1,
-        "monitored_person_statuses": [
-            {
-                "monitored_person": "c1",
-                "monitored_status": 1    ===>0：未知状态 1：在围栏内 2：在围栏外
+           /* 返回数据格式
+           {
+                "status": 0,
+                "message": "成功",
+                "size": 1,
+                "monitored_person_statuses": [
+                    {
+                        "monitored_person": "c1",
+                        "monitored_status": 1    ===>0：未知状态 1：在围栏内 2：在围栏外
+                    }
+                ]
             }
-        ]
-    }
-    */
+            */
 
             try {
                 JSONObject jsonObject = new JSONObject(arg0);
@@ -842,9 +828,7 @@ public class MapTraceActivity extends Activity {
                 //点击事件，显示当前位置
                 case R.id.ll_map_mylocation:
                     mBaiduMap.clear();
-                    ShowLocationOnMap showLocationOnMap = new ShowLocationOnMap();
-                    showLocationOnMap.startLocation(MapTraceActivity.this,trace_bmapView);
-
+                    ShowLocationOnMap.startLocation(MapTraceActivity.this,trace_bmapView);
                     break;
                 //点击事件，显示追踪线路
                 case R.id.ll_map_frlocation:
@@ -882,7 +866,7 @@ public class MapTraceActivity extends Activity {
                     bt_map_tracestate.setBackgroundResource(R.drawable.bg_care_switch_lefton);
                     bt_map_traceshistory.setBackgroundResource(R.drawable.bg_care_switch_rightoff);
                     bt_map_tracestate.setTextColor(Color.parseColor("#FFFFFF"));
-                    bt_map_traceshistory.setTextColor(Color.parseColor("#9E9E9E"));
+                    bt_map_traceshistory.setTextColor(Color.parseColor("#999999"));
                     rl_map_righttrace.setVisibility(View.VISIBLE);
                     rl_map_righthistory.setVisibility(View.GONE);
 
@@ -892,7 +876,7 @@ public class MapTraceActivity extends Activity {
                 case R.id.bt_map_traceshistory:
                     bt_map_tracestate.setBackgroundResource(R.drawable.bg_care_switch_leftoff);
                     bt_map_traceshistory.setBackgroundResource(R.drawable.bg_care_switch_righton);
-                    bt_map_tracestate.setTextColor(Color.parseColor("#9E9E9E"));
+                    bt_map_tracestate.setTextColor(Color.parseColor("#999999"));
                     bt_map_traceshistory.setTextColor(Color.parseColor("#FFFFFF"));
                     rl_map_righttrace.setVisibility(View.GONE);
                     rl_map_righthistory.setVisibility(View.VISIBLE);

@@ -7,10 +7,12 @@
     <LinearLayout
         android:id="@+id/ll_map_top"
         android:layout_width="150dp"
-        android:layout_height="wrap_content"
+        android:layout_height="35dp"
         android:orientation="horizontal"
         android:background="#FFFFFF"
-        android:layout_centerHorizontal="true">
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="3dp"
+        android:layout_marginBottom="2dp">
 
         <TextView
             android:id="@+id/bt_map_tracestate"
@@ -19,6 +21,7 @@
             android:layout_height="35dp"
             android:text="轨迹追踪"
             android:textColor="#FFFFFF"
+            android:textSize="15sp"
             android:background="@drawable/bg_care_switch_lefton"
             android:gravity="center"/>
         <TextView
@@ -27,30 +30,33 @@
             android:layout_weight="1"
             android:layout_height="35dp"
             android:text="历史轨迹"
+            android:textSize="15sp"
             android:gravity="center"
-            android:textColor="#9E9E9E"
+            android:textColor="#999999"
             android:background="@drawable/bg_care_switch_rightoff"/>
 
     </LinearLayout>
 
     <RelativeLayout
         android:layout_width="wrap_content"
-        android:layout_height="35dp"
+        android:layout_height="40dp"
         android:layout_alignParentRight="true">
         <TextView
             android:id="@+id/tv_map_friendname"
             android:layout_width="wrap_content"
             android:layout_centerVertical="true"
             android:layout_height="wrap_content"
+            android:layout_marginRight="-5dp"
+            android:textColor="#999999"
             android:text="name"/>
         <ImageView
             android:id="@+id/iv_map_friendicon"
             android:layout_toRightOf="@id/tv_map_friendname"
-            android:layout_marginRight="5dp"
-            android:layout_centerVertical="true"
             android:layout_width="35dp"
-            android:layout_height="35dp"
-            android:src="@drawable/male_icon"/>
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:layout_marginRight="5dp"
+            android:src="@drawable/arrow_down"/>
 
     </RelativeLayout>
 
@@ -58,8 +64,9 @@
         android:id="@+id/iv_map_usericon"
         android:layout_marginRight="5dp"
         android:layout_width="35dp"
-        android:layout_height="35dp"
-        android:src="@drawable/male_icon"/>
+        android:layout_height="40dp"
+        android:src="@drawable/headicon"
+        android:padding="5dp"/>
 
     <com.baidu.mapapi.map.MapView
         android:layout_below="@id/ll_map_top"
