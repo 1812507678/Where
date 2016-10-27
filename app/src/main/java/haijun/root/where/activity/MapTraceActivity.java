@@ -67,15 +67,16 @@ import haijun.root.where.R;
 import haijun.root.where.application.MyApplication;
 import haijun.root.where.bean.HistoryLocation;
 import haijun.root.where.bean.LocationInformation;
+import haijun.root.where.service.MonitorService;
 import haijun.root.where.util.Contanst;
 import haijun.root.where.util.DateDialog;
 import haijun.root.where.util.DateUtils;
 import haijun.root.where.util.MyUtil;
 import haijun.root.where.util.ShowLocationOnMap;
+import haijun.root.where.util.TraceUtil;
 
 public class MapTraceActivity extends Activity {
     private static final String TAG = "MapTraceActivity";
-    private LBSTraceClient client;
     private Trace trace;
     //鹰眼服务ID
     long serviceId  = 127542  ;
@@ -131,6 +132,7 @@ public class MapTraceActivity extends Activity {
     private int endTime = 0;
 
     private int traceState = Contanst.TRECE_STATE_NOPROCESSED;
+    private LinearLayout ll_map_mylocation;
 
 
     @Override
@@ -145,10 +147,11 @@ public class MapTraceActivity extends Activity {
 
         initView();
 
-        //实例化轨迹服务客户端
-        client = new LBSTraceClient(this);
+
 
         startTrace();
+
+
 
     }
 
@@ -157,7 +160,7 @@ public class MapTraceActivity extends Activity {
         LinearLayout ll_map_frlocation = (LinearLayout) findViewById(R.id.ll_map_frlocation);
         LinearLayout ll_map_fence = (LinearLayout) findViewById(R.id.ll_map_fence);
         LinearLayout ll_map_state = (LinearLayout) findViewById(R.id.ll_map_state);
-        LinearLayout ll_map_mylocation = (LinearLayout) findViewById(R.id.ll_map_mylocation);
+        ll_map_mylocation = (LinearLayout) findViewById(R.id.ll_map_mylocation);
         ll_map_more = (LinearLayout) findViewById(R.id.ll_map_more);
 
         bt_map_tracestate = (TextView) findViewById(R.id.bt_map_tracestate);
@@ -207,7 +210,7 @@ public class MapTraceActivity extends Activity {
 
     //开始追踪服务
     private  void startTrace(){
-        //实例化轨迹服务客户端
+        /*//实例化轨迹服务客户端
         client = new LBSTraceClient(this);
         client.setLocationMode(LocationMode.High_Accuracy);
         //位置采集周期
@@ -225,6 +228,11 @@ public class MapTraceActivity extends Activity {
         int  traceType = 2;
         //实例化轨迹服务
         trace = new Trace(this, serviceId, entityName, traceType);
+*/
+
+        //注册屏幕亮度变化的广播
+        TraceUtil.registerReveicer(this);
+
 
         //实例化开启轨迹服务回调接口
         OnStartTraceListener startTraceListener = new OnStartTraceListener() {
@@ -270,7 +278,21 @@ public class MapTraceActivity extends Activity {
         };
 
         //开启轨迹服务
-        client.startTrace(trace, startTraceListener);
+        //client.startTrace(trace, startTraceListener);
+
+        MyApplication.client.startTrace(MyApplication.trace,startTraceListener);
+
+        if (!MonitorService.isRunning) {
+            // 开启监听service
+            MonitorService.isCheck = true;
+            MonitorService.isRunning = true;
+            startMonitorService();
+        }
+    }
+
+    public void startMonitorService() {
+        Intent intent = new Intent(this, MonitorService.class);
+        startService(intent);
     }
 
     //查询实时位置
@@ -328,7 +350,7 @@ public class MapTraceActivity extends Activity {
             }
         };
 
-        client.queryEntityList(serviceId, entityName, columnKey, returnType, activeTime, pageSize,
+        MyApplication.client.queryEntityList(serviceId, entityName, columnKey, returnType, activeTime, pageSize,
                 pageIndex, entityListener);
     }
 
@@ -345,7 +367,7 @@ public class MapTraceActivity extends Activity {
         //分页索引
         int pageIndex = 1;
         //查询历史轨迹
-        client.queryHistoryTrack(serviceId, entityName, simpleReturn, startTime, endTime, pageSize, pageIndex, onTrackListener);
+        MyApplication.client.queryHistoryTrack(serviceId, entityName, simpleReturn, startTime, endTime, pageSize, pageIndex, onTrackListener);
     }
 
     // 绘制历史轨迹
@@ -439,7 +461,7 @@ public class MapTraceActivity extends Activity {
         // 分页索引
         int pageIndex = 1;
 
-        client.queryProcessedHistoryTrack(serviceId, entityName, simpleReturn, isProcessed,
+        MyApplication.client.queryProcessedHistoryTrack(serviceId, entityName, simpleReturn, isProcessed,
                 startTime, endTime,
                 pageSize,
                 pageIndex,
@@ -499,7 +521,6 @@ public class MapTraceActivity extends Activity {
 
     // 输入围栏信息对话框
     private void showinputDialog() {
-
         final EditText circleRadius = new EditText(MapTraceActivity.this);
         circleRadius.setFocusable(true);
         circleRadius.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -554,7 +575,7 @@ public class MapTraceActivity extends Activity {
             }
         };
         //停止轨迹服务
-        client.stopTrace(trace,stopTraceListener);
+        MyApplication.client.stopTrace(trace,stopTraceListener);
     }
     /**
      * 重置覆盖物
@@ -783,7 +804,7 @@ public class MapTraceActivity extends Activity {
                         if (monitored_person.equals(entityName)){
                             int monitored_status = jsonObject1.getInt("monitored_status");
                             AlertDialog.Builder builder = new AlertDialog.Builder(MapTraceActivity.this);
-                            builder.setTitle("设备现在状态");
+                            builder.setTitle("是否在围栏里");
                             builder.setPositiveButton("确定",null);
                             if (monitored_status==0){
                                 //0：未知状态
@@ -795,14 +816,14 @@ public class MapTraceActivity extends Activity {
                             else if (monitored_status==1){
                                 //1：在围栏内
                                 Looper.prepare();
-                                builder.setMessage("在安全围栏内");
+                                builder.setMessage("在围栏内");
                                 builder.show();
                                 Looper.loop();
                             }
                             else if (monitored_status==2){
                                 //2：在围栏外
                                 Looper.prepare();
-                                builder.setMessage("在安全围栏外");
+                                builder.setMessage("在围栏外");
                                 builder.show();
                                 Looper.loop();
                             }
@@ -869,7 +890,8 @@ public class MapTraceActivity extends Activity {
                     bt_map_traceshistory.setTextColor(Color.parseColor("#999999"));
                     rl_map_righttrace.setVisibility(View.VISIBLE);
                     rl_map_righthistory.setVisibility(View.GONE);
-
+                    ll_map_mylocation.setVisibility(View.VISIBLE);
+                    trace_bmapView.getMap().clear();
 
                     break;
                 //历史轨迹按钮
@@ -880,6 +902,7 @@ public class MapTraceActivity extends Activity {
                     bt_map_traceshistory.setTextColor(Color.parseColor("#FFFFFF"));
                     rl_map_righttrace.setVisibility(View.GONE);
                     rl_map_righthistory.setVisibility(View.VISIBLE);
+                    ll_map_mylocation.setVisibility(View.INVISIBLE);
 
                     MyUtil.showDialog("正在查询轨迹", MapTraceActivity.this);
                     queryHistoryTrack(1, "need_denoise=1,need_vacuate=1,need_mapmatch=0");
@@ -992,7 +1015,7 @@ public class MapTraceActivity extends Activity {
         }
 
         //查询历史轨迹
-        client.queryHistoryTrack(serviceId, entityName, simpleReturn, isProcessed, processOption,startTime, endTime, pageSize, pageIndex, onTrackListener);
+        MyApplication.client.queryHistoryTrack(serviceId, entityName, simpleReturn, isProcessed, processOption,startTime, endTime, pageSize, pageIndex, onTrackListener);
     }
 
 
@@ -1047,7 +1070,7 @@ public class MapTraceActivity extends Activity {
         int endTime = (int) (System.currentTimeMillis() / 1000);
 
         //查询历史报警信息
-        client.queryFenceHistoryAlarmInfo(serviceId, fenceId, monitoredPersons, beginTime, endTime,
+        MyApplication.client.queryFenceHistoryAlarmInfo(serviceId, fenceId, monitoredPersons, beginTime, endTime,
                 onGeoFenceListener);
     }
 
@@ -1057,7 +1080,7 @@ public class MapTraceActivity extends Activity {
         //监控对象列表（多个entityName，以英文逗号"," 分割）
         String monitoredPersons = entityName;
         //查询实时状态
-        client.queryMonitoredStatus(serviceId, fenceId, monitoredPersons, onGeoFenceListener);
+        MyApplication.client.queryMonitoredStatus(serviceId, fenceId, monitoredPersons, onGeoFenceListener);
     }
 
 
@@ -1068,7 +1091,7 @@ public class MapTraceActivity extends Activity {
             String creator = entityName;
             curFence_id = MyApplication.locationinf.getInt("fence_id", 0);
             if (curFence_id !=0){
-                client.queryFenceList(serviceId,creator, String.valueOf(curFence_id),onGeoFenceListener);
+                MyApplication.client.queryFenceList(serviceId,creator, String.valueOf(curFence_id),onGeoFenceListener);
             }
         }
         else {
@@ -1186,7 +1209,7 @@ public class MapTraceActivity extends Activity {
         int alarmCondition = 3;
 
         //创建圆形地理围栏
-        client.createCircularFence(serviceId, creator, fenceName, fenceDesc, monitoredPersons, observers,validTimes,
+        MyApplication.client.createCircularFence(serviceId, creator, fenceName, fenceDesc, monitoredPersons, observers,validTimes,
                 validCycle, validDate, validDays, coordType, center, radius, precision,alarmCondition, onGeoFenceListener);
     }
 
@@ -1218,7 +1241,7 @@ public class MapTraceActivity extends Activity {
         // 报警条件（1：进入时触发提醒，2：离开时触发提醒，3：进入离开均触发提醒）
         int alarmCondition = 3;
 
-        client.updateCircularFence(serviceId, fenceName, fenceId, fenceDesc,
+        MyApplication.client.updateCircularFence(serviceId, fenceName, fenceId, fenceDesc,
                 monitoredPersons,
                 observers, validTimes, validCycle, validDate, validDays, coordType, center, radius, precision,alarmCondition,
                 onGeoFenceListener);
@@ -1234,8 +1257,8 @@ public class MapTraceActivity extends Activity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (client!=null){
-            client.onDestroy();
+        if (MyApplication.client!=null){
+            MyApplication.client.onDestroy();
         }
         trace_bmapView.onDestroy();
     }
