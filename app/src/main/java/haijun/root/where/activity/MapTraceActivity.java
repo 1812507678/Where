@@ -77,11 +77,6 @@ import haijun.root.where.util.TraceUtil;
 
 public class MapTraceActivity extends Activity {
     private static final String TAG = "MapTraceActivity";
-    private Trace trace;
-    //鹰眼服务ID
-    long serviceId  = 127542  ;
-    //entity标识
-    String entityName = "c1";
     private MapView trace_bmapView;
     private MapStatusUpdate msUpdate = null;
     // 起点图标
@@ -96,7 +91,7 @@ public class MapTraceActivity extends Activity {
     private static PolylineOptions polyline = null;
     private BaiduMap mBaiduMap;
     // 覆盖物
-    protected static OverlayOptions overlay;
+    public static OverlayOptions overlay;
     //默认围栏半径
     private int radius =100;
     private int radiusTemp = radius;
@@ -112,7 +107,6 @@ public class MapTraceActivity extends Activity {
     // 围栏覆盖物
     protected static OverlayOptions fenceOverlay = null;
     protected static OverlayOptions fenceOverlayTemp = null;
-    //private LatLng latLng;
     private int curFence_id;
     private boolean isFenceshowing;
     private Overlay circleOverlay;
@@ -131,8 +125,15 @@ public class MapTraceActivity extends Activity {
     private int startTime = 0;
     private int endTime = 0;
 
+    boolean isTraceStarted = false;
+
     private int traceState = Contanst.TRECE_STATE_NOPROCESSED;
     private LinearLayout ll_map_mylocation;
+    private OnEntityListener onEntityListener;
+    private RefreshThread refreshThread;
+    private OnStartTraceListener onStartTraceListener;
+    private OnTrackListener onTrackListener;
+    private OnGeoFenceListener onGeoFenceListener;
 
 
     @Override
@@ -147,11 +148,9 @@ public class MapTraceActivity extends Activity {
 
         initView();
 
-
+        initListener();
 
         startTrace();
-
-
 
     }
 
@@ -167,6 +166,8 @@ public class MapTraceActivity extends Activity {
         bt_map_traceshistory = (TextView) findViewById(R.id.bt_map_traceshistory);
         rl_map_righttrace = (RelativeLayout) findViewById(R.id.rl_map_righttrace);
         rl_map_righthistory = (RelativeLayout) findViewById(R.id.rl_map_righthistory);
+        RelativeLayout rl_map_choosefri = (RelativeLayout) findViewById(R.id.rl_map_choosefri);
+
         tv_map_currentdate = (TextView) findViewById(R.id.tv_map_currentdate);
 
         LinearLayout iv_map_refresh = (LinearLayout) findViewById(R.id.iv_map_refresh);
@@ -191,9 +192,9 @@ public class MapTraceActivity extends Activity {
         iv_map_refresh.setOnClickListener(myTraceOnclickListener);
         ll_map_date.setOnClickListener(myTraceOnclickListener);
         ll_map_processe.setOnClickListener(myTraceOnclickListener);
+        rl_map_choosefri.setOnClickListener(myTraceOnclickListener);
 
     }
-
 
     @Override
     public void onResume() {
@@ -204,43 +205,91 @@ public class MapTraceActivity extends Activity {
     @Override
     public void onStart() {
         super.onStart();
-        queryEntityLocation();
+        startRefreshThread(true);
         Log.i(TAG,"onStart");
     }
 
     //开始追踪服务
     private  void startTrace(){
-        /*//实例化轨迹服务客户端
-        client = new LBSTraceClient(this);
-        client.setLocationMode(LocationMode.High_Accuracy);
-        //位置采集周期
-        int gatherInterval = 10;
-        //打包周期
-        int packInterval = 60;
-        //设置位置采集和打包周期
-        client.setInterval(gatherInterval, packInterval);
-
-        // 设置协议类型，0为http，1为https
-        int protocoType = 1;
-        client.setProtocolType(protocoType);
-
-        //轨迹服务类型（0 : 不上传位置数据，也不接收报警信息； 1 : 不上传位置数据，但接收报警信息；2 : 上传位置数据，且接收报警信息）
-        int  traceType = 2;
-        //实例化轨迹服务
-        trace = new Trace(this, serviceId, entityName, traceType);
-*/
-
         //注册屏幕亮度变化的广播
         TraceUtil.registerReveicer(this);
+        //开启轨迹服务
+        MyApplication.client.startTrace(MyApplication.trace,onStartTraceListener);
+        if (!MonitorService.isRunning) {
+            // 开启监听service
+            MonitorService.isCheck = true;
+            MonitorService.isRunning = true;
+            startMonitorService();
+        }
+    }
 
+    public void startMonitorService() {
+        Intent intent = new Intent(this, MonitorService.class);
+        startService(intent);
+    }
+
+    private void initListener(){
+        // 查询失败回调接口
+        // 查询entity回调接口，返回查询结果列表
+        //json解析
+        //经纬度
+        //Log.i(TAG,"entity回调接口消息 : " + location[0]+","+location[1]);
+        //在地图上显示
+        //Entity实时定位回调接口
+        onEntityListener = new OnEntityListener() {
+            // 查询失败回调接口
+            @Override
+            public void onRequestFailedCallback(String arg0) {
+                Log.i(TAG,"entity请求失败回调接口消息 :"+  arg0);
+
+            }
+
+            // 查询entity回调接口，返回查询结果列表
+            @Override
+            public void onQueryEntityListCallback(String arg0) {
+                Log.i(TAG,"onQueryEntityListCallback: " + arg0);
+                //json解析
+                Gson gson = new Gson();
+                LocationInformation locationInformation = gson.fromJson(arg0, LocationInformation.class);
+
+                Log.i(TAG,"onQueryEntityListCallback,entities.length : " + locationInformation.entities.length);
+                //经纬度
+                String[] location = locationInformation.entities[0].realtime_point.location;
+                //Log.i(TAG,"entity回调接口消息 : " + location[0]+","+location[1]);
+                double latitude =  Double.parseDouble(location[1]);
+                double longitude =  Double.parseDouble(location[0]);
+
+                //在地图上显示
+                ShowLocationOnMap.showPointOnMap(latitude,longitude,trace_bmapView,MapTraceActivity.this,2);
+            }
+            //Entity实时定位回调接口
+            @Override
+            public void onReceiveLocation(TraceLocation traceLocation) {
+                Log.i(TAG,"entity回调接口消息 ,onReceiveLocation: " + traceLocation.getLatitude()+":"+traceLocation.getLongitude());
+                //在地图上显示
+                ShowLocationOnMap.showPointOnMap(traceLocation.getLatitude(),traceLocation.getLongitude(),trace_bmapView,MapTraceActivity.this,2);
+            }
+
+            @Override
+            public void onUpdateEntityCallback(String s) {
+                super.onUpdateEntityCallback(s);
+                Log.i(TAG,"entity回调接口消息 ,onUpdateEntityCallback: " +s);
+            }
+        };
 
         //实例化开启轨迹服务回调接口
-        OnStartTraceListener startTraceListener = new OnStartTraceListener() {
+        //开启轨迹服务回调接口（arg0 : 消息编码，arg1 : 消息内容，详情查看类参考）
+        //轨迹服务推送接口（用于接收服务端推送消息，arg0 : 消息类型，arg1 : 消息内容，详情查看类参考）
+        //报警信息在OnStartTraceListener监听器的OnTracePushCallBack()接口中获取
+        // TODO Auto-generated method stub
+        // TODO Auto-generated catch block
+        onStartTraceListener = new OnStartTraceListener() {
             //开启轨迹服务回调接口（arg0 : 消息编码，arg1 : 消息内容，详情查看类参考）
             @Override
             public void onTraceCallback(int arg0, String arg1) {
                 if (arg0==0){
                     Toast.makeText(MapTraceActivity.this, "开启成功", Toast.LENGTH_SHORT).show();
+                    isTraceStarted = true;
                 }
                 else if (arg0==10000){
                     Toast.makeText(MapTraceActivity.this, "10000开启服务请求发送失败", Toast.LENGTH_SHORT).show();
@@ -273,85 +322,315 @@ public class MapTraceActivity extends Activity {
             //报警信息在OnStartTraceListener监听器的OnTracePushCallBack()接口中获取
             @Override
             public void onTracePushCallback(byte arg0, String arg1) {
-                Log.i(TAG,"onTracePushCallback:"+arg0+":"+arg1);
+                Log.i(TAG,"onTracePushCallback=="+"arg0:"+arg0+",arg1:"+arg1);
+                // TODO Auto-generated method stub
+                if (0x03 == arg0 || 0x04 == arg0) {
+                    try {
+                        JSONObject dataJson = new JSONObject(arg1);
+                        if (null != dataJson) {
+                            String mPerson = dataJson.getString("monitored_person");
+                            String action = dataJson.getInt("action") == 1 ? "进入" : "离开";
+                            String date = DateUtils.getDate(dataJson.getInt("time"));
+                            long fenceId = dataJson.getLong("fence_id");
+                            Toast.makeText(MapTraceActivity.this,  "监控对象[" + mPerson + "]于" + date + " [" + action + "][" + fenceId + "号]围栏", Toast.LENGTH_SHORT).show();
+
+                        }
+                    } catch (JSONException e) {
+                        // TODO Auto-generated catch block
+                        Toast.makeText(MapTraceActivity.this, "轨迹服务推送接口消息 [消息类型 : " + arg0 + "，消息内容 : " + arg1 + "]", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(MapTraceActivity.this, "轨迹服务推送接口消息 [消息类型 : " + arg0 + "，消息内容 : " + arg1 + "]", Toast.LENGTH_SHORT).show();
+                }
             }
         };
 
-        //开启轨迹服务
-        //client.startTrace(trace, startTraceListener);
+        // 绘制历史轨迹
+        //轨迹中的每个位置点可拥有一系列开发者自定义的描述字段，如汽车的油量、发动机转速等，用以记录行程中的实时状态信息。
+        //开发者须重写OnTrackListener监听器中的onTrackAttrCallback()接口，在回传轨迹点时回传属性数据。
+        // 注：SDK根据位置采集周期回调该接口，获取轨迹属性数据。
+        onTrackListener = new OnTrackListener() {
+            @Override
+            public void onRequestFailedCallback(String s) {
+                MyUtil.hideDialog();
+            }
 
-        MyApplication.client.startTrace(MyApplication.trace,startTraceListener);
+            //轨迹中的每个位置点可拥有一系列开发者自定义的描述字段，如汽车的油量、发动机转速等，用以记录行程中的实时状态信息。
+            @Override
+            public Map onTrackAttrCallback() {
+                //开发者须重写OnTrackListener监听器中的onTrackAttrCallback()接口，在回传轨迹点时回传属性数据。
+                // 注：SDK根据位置采集周期回调该接口，获取轨迹属性数据。
 
-        if (!MonitorService.isRunning) {
-            // 开启监听service
-            MonitorService.isCheck = true;
-            MonitorService.isRunning = true;
-            startMonitorService();
-        }
+                return super.onTrackAttrCallback();
+            }
+
+            @Override
+            public void onQueryHistoryTrackCallback(String s) {
+                super.onQueryHistoryTrackCallback(s);
+                MyUtil.hideDialog();
+                dealDataToDrawTrack(s);
+                Log.i(TAG, "OnTrackListener回调接口消息 : " + s);
+            }
+        };
+
+        onGeoFenceListener = new OnGeoFenceListener() {
+            //请求失败回调接口
+            @Override
+            public void onRequestFailedCallback(String arg0) {
+                mBaiduMap.clear();
+                if (null != fenceOverlayTemp) {
+                    fenceOverlay = fenceOverlayTemp;
+                    fenceOverlayTemp = null;
+                }
+                radius = radiusTemp;
+                // 围栏覆盖物
+                addMapOverLay();
+                Log.i(TAG,"geoFence请求失败 : " + arg0);
+                Looper.prepare();
+                Toast.makeText(MapTraceActivity.this,"geoFence请求失败:"+ arg0,Toast.LENGTH_SHORT).show();
+                Looper.loop();
+            }
+
+            //创建圆形围栏回调接口
+            @Override
+            public void onCreateCircularFenceCallback(String arg0) {
+                Log.i(TAG,"创建圆形围栏回调接口消息 : " + arg0);
+                try {
+                    JSONObject jsonObject = new JSONObject(arg0);
+                    int status = jsonObject.getInt("status");
+                    if (status==0){
+                        Log.i(TAG,"status==0");
+                        //创建成功，
+                        fenceId = jsonObject.getInt("fence_id");
+                        MyApplication.locationinf.edit().putInt("fence_id",fenceId).commit();
+                        fenceOverlayTemp = null;
+                        Looper.prepare();
+                        Toast.makeText(MapTraceActivity.this,"创建围栏成功",Toast.LENGTH_SHORT).show();
+                        Looper.loop();
+                    }
+                    else {
+                        mBaiduMap.clear();
+                        fenceOverlay = fenceOverlayTemp;
+                        fenceOverlayTemp = null;
+                        radius = radiusTemp;
+                        // 围栏覆盖物
+                        addMapOverLay();
+                        Looper.prepare();
+                        Toast.makeText(MapTraceActivity.this,"创建圆形围栏失败："+arg0,Toast.LENGTH_SHORT).show();
+                        Looper.loop();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            //更新圆形围栏回调接口
+            @Override
+            public void onUpdateCircularFenceCallback(String arg0) {
+                Log.i(TAG,"更新圆形围栏回调接口消息 : " + arg0);
+
+                try {
+                    JSONObject jsonObject = new JSONObject(arg0);
+                    int status = jsonObject.getInt("status");
+                    if (status==0){
+                        Log.i(TAG,"status==0");
+                        //创建成功，
+                        Looper.prepare();
+                        Toast.makeText(MapTraceActivity.this,"更新围栏成功",Toast.LENGTH_SHORT).show();
+                        Looper.loop();
+                    }
+                    else {
+                        Looper.prepare();
+                        Toast.makeText(MapTraceActivity.this,"更新圆形围栏失败："+arg0,Toast.LENGTH_SHORT).show();
+                        Looper.loop();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            //删除围栏回调接口
+            @Override
+            public void onDeleteFenceCallback(String arg0) {
+                Log.i(TAG," 删除围栏回调接口消息 : " + arg0);
+            }
+
+            //查询围栏列表回调接口
+            @Override
+            public void onQueryFenceListCallback(String arg0) {
+                Log.i(TAG,"查询围栏列表回调接口消息    : " + arg0);
+
+                try {
+                    JSONObject jsonObject = new JSONObject(arg0);
+                    int status = jsonObject.getInt("status");
+                    JSONArray fences = jsonObject.getJSONArray("fences");
+                    JSONObject jsonObject1 = (JSONObject) fences.get(0);
+                    int fence_id = jsonObject1.getInt("fence_id");
+                    Log.i(TAG,"fence_id:"+fence_id);
+                    //查询成功
+                    if (status==0){
+                        if (fence_id==curFence_id){
+                            int radius = jsonObject1.getInt("radius");
+                            JSONObject center = jsonObject1.getJSONObject("center");
+                            double longitude = center.getDouble("longitude");
+                            double latitude = center.getDouble("latitude");
+
+                            LatLng latLng = new LatLng(latitude,longitude);
+                            fenceOverlayTemp = fenceOverlay;
+                            fenceOverlay = new CircleOptions().fillColor(0x000000FF).center(latLng)
+                                    .stroke(new Stroke(5, Color.rgb(0xff, 0x00, 0x33)))
+                                    .radius(radius);
+
+                            // 围栏覆盖物
+                            addMapOverLay();
+                            isFenceshowing = true;
+                        }
+
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            //查询历史报警回调接口
+            @Override
+            public void onQueryHistoryAlarmCallback(String arg0) {
+                Log.i(TAG," 查询历史报警回调接口消息 : " + arg0);
+            /*返回数据格式  ，具体看http://lbsyun.baidu.com/index.php?title=yingyan/api/fence
+            {
+                "status": 0,
+                "message": "成功",
+                "size": 0,
+                "monitored_person_alarms": []
+            }
+             */
+                try {
+                    JSONObject jsonObject = new JSONObject(arg0);
+                    int status = jsonObject.getInt("status");
+                    int size = jsonObject.getInt("size");  //返回的结果条数
+                    if (status==0){
+                        for (int i=0;i<size;i++){
+                            JSONArray monitored_person_alarms = jsonObject.getJSONArray("monitored_person_alarms");
+                            JSONObject jsonObject1 = (JSONObject) monitored_person_alarms.get(i);
+                            String monitored_person = jsonObject1.getString("monitored_person");
+                            if (monitored_person.equals(MyApplication.entityName)){
+                                int alarm_size = jsonObject1.getInt("alarm_size");  //报警列表大小
+                                JSONArray alarms = jsonObject1.getJSONArray("alarms");
+                                for (int j=0;j<alarm_size;j++){
+                                    JSONObject jsonObject2 = (JSONObject) alarms.get(0);
+                                    int action = jsonObject2.getInt("action");
+                                    String time = jsonObject2.getString("time");
+                                    Log.i(TAG,"MyApplication.entityName:"+MyApplication.entityName+","+"action"+action+"time"+time);
+                                }
+                            }
+                        }
+                        if (size==0){
+                            Looper.prepare();
+                            Toast.makeText(MapTraceActivity.this,"历史报警记录为空",Toast.LENGTH_SHORT).show();
+                            Looper.loop();
+                        }
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+            //查询监控对象状态回调接口
+            @Override
+            public void onQueryMonitoredStatusCallback(String arg0) {
+                Log.i(TAG," 查询监控对象状态回调接口消息    : " + arg0);
+           /* 返回数据格式
+           {
+                "status": 0,
+                "message": "成功",
+                "size": 1,
+                "monitored_person_statuses": [
+                    {
+                        "monitored_person": "c1",
+                        "monitored_status": 1    ===>0：未知状态 1：在围栏内 2：在围栏外
+                    }
+                ]
+            }
+            */
+
+                try {
+                    JSONObject jsonObject = new JSONObject(arg0);
+                    int status = jsonObject.getInt("status");
+                    if (status==0){
+                        //返回成功
+                        int size = jsonObject.getInt("size");
+                        for (int i=0;i<size;i++){
+                            JSONArray monitored_person_statuses = jsonObject.getJSONArray("monitored_person_statuses");
+                            JSONObject jsonObject1 = (JSONObject) monitored_person_statuses.get(i);
+                            String monitored_person = jsonObject1.getString("monitored_person");
+                            if (monitored_person.equals(MyApplication.entityName)){
+                                int monitored_status = jsonObject1.getInt("monitored_status");
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MapTraceActivity.this);
+                                builder.setTitle("是否在围栏里");
+                                builder.setPositiveButton("确定",null);
+                                if (monitored_status==0){
+                                    //0：未知状态
+                                    Looper.prepare();
+                                    builder.setMessage("未知状态");
+                                    builder.show();
+                                    Looper.loop();
+                                }
+                                else if (monitored_status==1){
+                                    //1：在围栏内
+                                    Looper.prepare();
+                                    builder.setMessage("在围栏内");
+                                    builder.show();
+                                    Looper.loop();
+                                }
+                                else if (monitored_status==2){
+                                    //2：在围栏外
+                                    Looper.prepare();
+                                    builder.setMessage("在围栏外");
+                                    builder.show();
+                                    Looper.loop();
+                                }
+                            }
+                        }
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        };
     }
 
-    public void startMonitorService() {
-        Intent intent = new Intent(this, MonitorService.class);
-        startService(intent);
+    protected void startRefreshThread(boolean isStart) {
+        if (null == refreshThread) {
+            refreshThread = new RefreshThread();
+        }
+        refreshThread.refresh = isStart;
+        if (isStart) {
+            if (!refreshThread.isAlive()) {
+                refreshThread.start();
+            }
+        } else {
+            refreshThread = null;
+        }
     }
 
     //查询实时位置
     private void queryEntityLocation() {
+
         //检索条件（格式为 : "key1=value1,key2=value2,....."）
         //String columnKey = "car_team=1";
-        String columnKey = "car_team=1";
-        //返回结果的类型（0 : 返回全部结果，1 : 只返回entityName的列表）
+        String columnKey = "";
+        //返回结果的类型（0 : 返回全部结果，1 : 只返回MyApplication.entityName的列表）
         int returnType = 0;
         //活跃时间，UNIX时间戳（指定该字段时，返回从该时间点之后仍有位置变动的entity的实时点集合）
-        int activeTime = (int) (System.currentTimeMillis() / 1000 - 12 * 60 * 60);
+        int activeTime = (int) (System.currentTimeMillis() / 1000 - MyApplication.packInterval);
         //分页大小
-        int pageSize = 1000;
+        int pageSize = 10;
         //分页索引
         int pageIndex = 1;
+
         //Entity监听器
-
-        OnEntityListener entityListener = new OnEntityListener() {
-            // 查询失败回调接口
-            @Override
-            public void onRequestFailedCallback(String arg0) {
-                Log.i(TAG,"entity请求失败回调接口消息 :"+  arg0);
-
-            }
-
-            // 查询entity回调接口，返回查询结果列表
-            @Override
-            public void onQueryEntityListCallback(String arg0) {
-                //json解析
-                Gson gson = new Gson();
-                LocationInformation locationInformation = gson.fromJson(arg0, LocationInformation.class);
-
-                Log.i(TAG,"onQueryEntityListCallback: " + arg0);
-                Log.i(TAG,"onQueryEntityListCallback,entities.length : " + locationInformation.entities.length);
-                //经纬度
-                String[] location = locationInformation.entities[0].realtime_point.location;
-                //Log.i(TAG,"entity回调接口消息 : " + location[0]+","+location[1]);
-                double latitude =  Double.parseDouble(location[1]);
-                double longitude =  Double.parseDouble(location[0]);
-
-                //在地图上显示
-                ShowLocationOnMap.showPointOnMap(latitude,longitude,trace_bmapView);
-            }
-            //Entity实时定位回调接口
-            @Override
-            public void onReceiveLocation(TraceLocation traceLocation) {
-                super.onReceiveLocation(traceLocation);
-                Log.i(TAG,"entity回调接口消息 ,onReceiveLocation: " + traceLocation.getLatitude()+":"+traceLocation.getLongitude());
-            }
-
-            @Override
-            public void onUpdateEntityCallback(String s) {
-                super.onUpdateEntityCallback(s);
-                Log.i(TAG,"entity回调接口消息 ,onUpdateEntityCallback: " +s);
-            }
-        };
-
-        MyApplication.client.queryEntityList(serviceId, entityName, columnKey, returnType, activeTime, pageSize,
-                pageIndex, entityListener);
+        MyApplication.client.queryEntityList(MyApplication.serviceId, MyApplication.entityName, columnKey, returnType, activeTime, pageSize,
+                pageIndex, onEntityListener);
     }
 
     //查询历史轨迹
@@ -367,30 +646,11 @@ public class MapTraceActivity extends Activity {
         //分页索引
         int pageIndex = 1;
         //查询历史轨迹
-        MyApplication.client.queryHistoryTrack(serviceId, entityName, simpleReturn, startTime, endTime, pageSize, pageIndex, onTrackListener);
+        MyApplication.client.queryHistoryTrack(MyApplication.serviceId, MyApplication.entityName, simpleReturn, startTime, endTime, pageSize, pageIndex, onTrackListener);
     }
 
-    // 绘制历史轨迹
-    private OnTrackListener onTrackListener = new OnTrackListener() {
-        @Override
-        public void onRequestFailedCallback(String s) {
-            MyUtil.hideDialog();
-        }
-
-        //轨迹中的每个位置点可拥有一系列开发者自定义的描述字段，如汽车的油量、发动机转速等，用以记录行程中的实时状态信息。
-        @Override
-        public Map onTrackAttrCallback() {
-            //开发者须重写OnTrackListener监听器中的onTrackAttrCallback()接口，在回传轨迹点时回传属性数据。
-            // 注：SDK根据位置采集周期回调该接口，获取轨迹属性数据。
-
-            return super.onTrackAttrCallback();
-        }
-
-        @Override
-        public void onQueryHistoryTrackCallback(String s) {
-            super.onQueryHistoryTrackCallback(s);
-            MyUtil.hideDialog();
-            //返回数据格式为point点的数据集合
+    private void dealDataToDrawTrack(String data) {
+        //返回数据格式为point点的数据集合
         /*{
             "status": 0,
                 "size": 738,
@@ -416,13 +676,6 @@ public class MapTraceActivity extends Activity {
                                 22.579549752609
                         ],
                 */
-
-            dealDataToDrawTrack(s);
-            Log.i(TAG, "OnTrackListener回调接口消息 : " + s);
-        }
-    };
-
-    private void dealDataToDrawTrack(String data) {
         Gson gson = new Gson();
         HistoryLocation historyLocation = gson.fromJson(data, HistoryLocation.class);
 
@@ -461,7 +714,7 @@ public class MapTraceActivity extends Activity {
         // 分页索引
         int pageIndex = 1;
 
-        MyApplication.client.queryProcessedHistoryTrack(serviceId, entityName, simpleReturn, isProcessed,
+        MyApplication.client.queryProcessedHistoryTrack(MyApplication.serviceId, MyApplication.entityName, simpleReturn, isProcessed,
                 startTime, endTime,
                 pageSize,
                 pageIndex,
@@ -575,7 +828,7 @@ public class MapTraceActivity extends Activity {
             }
         };
         //停止轨迹服务
-        MyApplication.client.stopTrace(trace,stopTraceListener);
+        MyApplication.client.stopTrace(MyApplication.trace,stopTraceListener);
     }
     /**
      * 重置覆盖物
@@ -611,231 +864,7 @@ public class MapTraceActivity extends Activity {
         }
     }
 
-    //围栏监听器
-    private OnGeoFenceListener onGeoFenceListener = new OnGeoFenceListener() {
-        //请求失败回调接口
-        @Override
-        public void onRequestFailedCallback(String arg0) {
-            mBaiduMap.clear();
-            if (null != fenceOverlayTemp) {
-                fenceOverlay = fenceOverlayTemp;
-                fenceOverlayTemp = null;
-            }
-            radius = radiusTemp;
-            // 围栏覆盖物
-            addMapOverLay();
-            Log.i(TAG,"geoFence请求失败 : " + arg0);
-            Looper.prepare();
-            Toast.makeText(MapTraceActivity.this,"geoFence请求失败:"+ arg0,Toast.LENGTH_SHORT).show();
-            Looper.loop();
-        }
 
-        //创建圆形围栏回调接口
-        @Override
-        public void onCreateCircularFenceCallback(String arg0) {
-            Log.i(TAG,"创建圆形围栏回调接口消息 : " + arg0);
-            try {
-                JSONObject jsonObject = new JSONObject(arg0);
-                int status = jsonObject.getInt("status");
-                if (status==0){
-                    Log.i(TAG,"status==0");
-                    //创建成功，
-                    fenceId = jsonObject.getInt("fence_id");
-                    MyApplication.locationinf.edit().putInt("fence_id",fenceId).commit();
-                    fenceOverlayTemp = null;
-                    Looper.prepare();
-                    Toast.makeText(MapTraceActivity.this,"创建围栏成功",Toast.LENGTH_SHORT).show();
-                    Looper.loop();
-                }
-                else {
-                    mBaiduMap.clear();
-                    fenceOverlay = fenceOverlayTemp;
-                    fenceOverlayTemp = null;
-                    radius = radiusTemp;
-                    // 围栏覆盖物
-                    addMapOverLay();
-                    Looper.prepare();
-                    Toast.makeText(MapTraceActivity.this,"创建圆形围栏失败："+arg0,Toast.LENGTH_SHORT).show();
-                    Looper.loop();
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        //更新圆形围栏回调接口
-        @Override
-        public void onUpdateCircularFenceCallback(String arg0) {
-            Log.i(TAG,"更新圆形围栏回调接口消息 : " + arg0);
-
-            try {
-                JSONObject jsonObject = new JSONObject(arg0);
-                int status = jsonObject.getInt("status");
-                if (status==0){
-                    Log.i(TAG,"status==0");
-                    //创建成功，
-                    Looper.prepare();
-                    Toast.makeText(MapTraceActivity.this,"更新围栏成功",Toast.LENGTH_SHORT).show();
-                    Looper.loop();
-                }
-                else {
-                    Looper.prepare();
-                    Toast.makeText(MapTraceActivity.this,"更新圆形围栏失败："+arg0,Toast.LENGTH_SHORT).show();
-                    Looper.loop();
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-
-        //删除围栏回调接口
-        @Override
-        public void onDeleteFenceCallback(String arg0) {
-            Log.i(TAG," 删除围栏回调接口消息 : " + arg0);
-        }
-
-        //查询围栏列表回调接口
-        @Override
-        public void onQueryFenceListCallback(String arg0) {
-            Log.i(TAG,"查询围栏列表回调接口消息    : " + arg0);
-
-            try {
-                JSONObject jsonObject = new JSONObject(arg0);
-                int status = jsonObject.getInt("status");
-                JSONArray fences = jsonObject.getJSONArray("fences");
-                JSONObject jsonObject1 = (JSONObject) fences.get(0);
-                int fence_id = jsonObject1.getInt("fence_id");
-                Log.i(TAG,"fence_id:"+fence_id);
-               //查询成功
-                if (status==0){
-                    if (fence_id==curFence_id){
-                        int radius = jsonObject1.getInt("radius");
-                        JSONObject center = jsonObject1.getJSONObject("center");
-                        double longitude = center.getDouble("longitude");
-                        double latitude = center.getDouble("latitude");
-
-                        LatLng latLng = new LatLng(latitude,longitude);
-                        fenceOverlayTemp = fenceOverlay;
-                        fenceOverlay = new CircleOptions().fillColor(0x000000FF).center(latLng)
-                                .stroke(new Stroke(5, Color.rgb(0xff, 0x00, 0x33)))
-                                .radius(radius);
-
-                        // 围栏覆盖物
-                        addMapOverLay();
-                        isFenceshowing = true;
-                    }
-
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        //查询历史报警回调接口
-        @Override
-        public void onQueryHistoryAlarmCallback(String arg0) {
-            Log.i(TAG," 查询历史报警回调接口消息 : " + arg0);
-            /*返回数据格式  ，具体看http://lbsyun.baidu.com/index.php?title=yingyan/api/fence
-            {
-                "status": 0,
-                "message": "成功",
-                "size": 0,
-                "monitored_person_alarms": []
-            }
-             */
-            try {
-                JSONObject jsonObject = new JSONObject(arg0);
-                int status = jsonObject.getInt("status");
-                int size = jsonObject.getInt("size");  //返回的结果条数
-                if (status==0){
-                    for (int i=0;i<size;i++){
-                        JSONArray monitored_person_alarms = jsonObject.getJSONArray("monitored_person_alarms");
-                        JSONObject jsonObject1 = (JSONObject) monitored_person_alarms.get(i);
-                        String monitored_person = jsonObject1.getString("monitored_person");
-                        if (monitored_person.equals(entityName)){
-                            int alarm_size = jsonObject1.getInt("alarm_size");  //报警列表大小
-                            JSONArray alarms = jsonObject1.getJSONArray("alarms");
-                            for (int j=0;j<alarm_size;j++){
-                                JSONObject jsonObject2 = (JSONObject) alarms.get(0);
-                                int action = jsonObject2.getInt("action");
-                                String time = jsonObject2.getString("time");
-                                Log.i(TAG,"entityName:"+entityName+","+"action"+action+"time"+time);
-                            }
-                        }
-                    }
-                    if (size==0){
-                        Looper.prepare();
-                        Toast.makeText(MapTraceActivity.this,"历史报警记录为空",Toast.LENGTH_SHORT).show();
-                        Looper.loop();
-                    }
-                }
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-        }
-        //查询监控对象状态回调接口
-        @Override
-        public void onQueryMonitoredStatusCallback(String arg0) {
-            Log.i(TAG," 查询监控对象状态回调接口消息    : " + arg0);
-           /* 返回数据格式
-           {
-                "status": 0,
-                "message": "成功",
-                "size": 1,
-                "monitored_person_statuses": [
-                    {
-                        "monitored_person": "c1",
-                        "monitored_status": 1    ===>0：未知状态 1：在围栏内 2：在围栏外
-                    }
-                ]
-            }
-            */
-
-            try {
-                JSONObject jsonObject = new JSONObject(arg0);
-                int status = jsonObject.getInt("status");
-                if (status==0){
-                    //返回成功
-                    int size = jsonObject.getInt("size");
-                    for (int i=0;i<size;i++){
-                        JSONArray monitored_person_statuses = jsonObject.getJSONArray("monitored_person_statuses");
-                        JSONObject jsonObject1 = (JSONObject) monitored_person_statuses.get(i);
-                        String monitored_person = jsonObject1.getString("monitored_person");
-                        if (monitored_person.equals(entityName)){
-                            int monitored_status = jsonObject1.getInt("monitored_status");
-                            AlertDialog.Builder builder = new AlertDialog.Builder(MapTraceActivity.this);
-                            builder.setTitle("是否在围栏里");
-                            builder.setPositiveButton("确定",null);
-                            if (monitored_status==0){
-                                //0：未知状态
-                                Looper.prepare();
-                                builder.setMessage("未知状态");
-                                builder.show();
-                                Looper.loop();
-                            }
-                            else if (monitored_status==1){
-                                //1：在围栏内
-                                Looper.prepare();
-                                builder.setMessage("在围栏内");
-                                builder.show();
-                                Looper.loop();
-                            }
-                            else if (monitored_status==2){
-                                //2：在围栏外
-                                Looper.prepare();
-                                builder.setMessage("在围栏外");
-                                builder.show();
-                                Looper.loop();
-                            }
-                        }
-                    }
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-
-    };
 
     class MyTraceOnclickListener implements View.OnClickListener{
 
@@ -848,12 +877,12 @@ public class MapTraceActivity extends Activity {
             switch (v.getId()) {
                 //点击事件，显示当前位置
                 case R.id.ll_map_mylocation:
-                    mBaiduMap.clear();
+                    //mBaiduMap.clear();
                     ShowLocationOnMap.startLocation(MapTraceActivity.this,trace_bmapView);
                     break;
                 //点击事件，显示追踪线路
                 case R.id.ll_map_frlocation:
-                    mBaiduMap.clear();
+                    //mBaiduMap.clear();
                     queryEntityLocation();
                     break;
                 //更多
@@ -892,6 +921,8 @@ public class MapTraceActivity extends Activity {
                     rl_map_righthistory.setVisibility(View.GONE);
                     ll_map_mylocation.setVisibility(View.VISIBLE);
                     trace_bmapView.getMap().clear();
+                    ShowLocationOnMap.startLocation(MapTraceActivity.this,trace_bmapView);
+                    queryEntityLocation();
 
                     break;
                 //历史轨迹按钮
@@ -936,6 +967,12 @@ public class MapTraceActivity extends Activity {
                 case R.id.iv_map_refresh:
                     MyUtil.showDialog("正在查询轨迹", MapTraceActivity.this);
                     queryHistoryTrack(1, "need_denoise=1,need_vacuate=1,need_mapmatch=0");
+                    break;
+
+                //切换好友
+                case R.id.rl_map_choosefri:
+                    startActivity(new Intent(MapTraceActivity.this,UserListActivity.class));
+
                     break;
 
                 default:
@@ -1015,7 +1052,7 @@ public class MapTraceActivity extends Activity {
         }
 
         //查询历史轨迹
-        MyApplication.client.queryHistoryTrack(serviceId, entityName, simpleReturn, isProcessed, processOption,startTime, endTime, pageSize, pageIndex, onTrackListener);
+        MyApplication.client.queryHistoryTrack(MyApplication.serviceId, MyApplication.entityName, simpleReturn, isProcessed, processOption,startTime, endTime, pageSize, pageIndex, onTrackListener);
     }
 
 
@@ -1037,21 +1074,21 @@ public class MapTraceActivity extends Activity {
         popupWindow.setFocusable(true);
         popupWindow.setOutsideTouchable(true);
 
-/*popupWindow.setTouchInterceptor(new View.OnTouchListener() {
+        /*popupWindow.setTouchInterceptor(new View.OnTouchListener() {
 
-    @Override
-    public boolean onTouch(View v, MotionEvent event) {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
 
-        Log.i("mengdd", "onTouch : ");
+                Log.i("mengdd", "onTouch : ");
 
-        return true;
-        // 这里如果返回true的话，touch事件将被拦截
-        // 拦截后 PopupWindow的onTouchEvent不被调用，这样点击外部区域无法dismiss
-    }
-});
-*/
-        /*popupWindow.setBackgroundDrawable(getResources().getDrawable(
-                R.drawable.bg_pop));*/
+                return true;
+                // 这里如果返回true的话，touch事件将被拦截
+                // 拦截后 PopupWindow的onTouchEvent不被调用，这样点击外部区域无法dismiss
+            }
+        });
+        */
+                /*popupWindow.setBackgroundDrawable(getResources().getDrawable(
+                        R.drawable.bg_pop));*/
         popupWindow.setBackgroundDrawable(new ColorDrawable(0));
 
         // 设置好参数之后再show
@@ -1062,36 +1099,36 @@ public class MapTraceActivity extends Activity {
     private void checkhisteryAlarmInfo() {
         //围栏ID
         int fenceId = MyApplication.locationinf.getInt("fence_id", 0);
-        //监控对象列表（多个entityName，以英文逗号"," 分割）
-        String monitoredPersons = entityName;
+        //监控对象列表（多个MyApplication.entityName，以英文逗号"," 分割）
+        String monitoredPersons = MyApplication.entityName;
         //开始时间（unix时间戳）
         int beginTime = (int) (System.currentTimeMillis() / 1000 - 12 * 60 * 60);
         //结束时间（unix时间戳）
         int endTime = (int) (System.currentTimeMillis() / 1000);
 
         //查询历史报警信息
-        MyApplication.client.queryFenceHistoryAlarmInfo(serviceId, fenceId, monitoredPersons, beginTime, endTime,
+        MyApplication.client.queryFenceHistoryAlarmInfo(MyApplication.serviceId, fenceId, monitoredPersons, beginTime, endTime,
                 onGeoFenceListener);
     }
 
     private void checkcurrentState() {
         //围栏ID
         int fenceId = MyApplication.locationinf.getInt("fence_id", 0);
-        //监控对象列表（多个entityName，以英文逗号"," 分割）
-        String monitoredPersons = entityName;
+        //监控对象列表（多个MyApplication.entityName，以英文逗号"," 分割）
+        String monitoredPersons = MyApplication.entityName;
         //查询实时状态
-        MyApplication.client.queryMonitoredStatus(serviceId, fenceId, monitoredPersons, onGeoFenceListener);
+        MyApplication.client.queryMonitoredStatus(MyApplication.serviceId, fenceId, monitoredPersons, onGeoFenceListener);
     }
 
 
     //显示围栏
     private void showGeoFence() {
         if (!isFenceshowing){
-            //查询围栏列表 queryFenceList(long serviceId, java.lang.String creator, java.lang.String fenceIds, OnGeoFenceListener listener)
-            String creator = entityName;
+            //查询围栏列表 queryFenceList(long MyApplication.serviceId, java.lang.String creator, java.lang.String fenceIds, OnGeoFenceListener listener)
+            String creator = MyApplication.entityName;
             curFence_id = MyApplication.locationinf.getInt("fence_id", 0);
             if (curFence_id !=0){
-                MyApplication.client.queryFenceList(serviceId,creator, String.valueOf(curFence_id),onGeoFenceListener);
+                MyApplication.client.queryFenceList(MyApplication.serviceId,creator, String.valueOf(curFence_id),onGeoFenceListener);
             }
         }
         else {
@@ -1182,15 +1219,15 @@ public class MapTraceActivity extends Activity {
 
     private void createFence(LatLng latLng) {
         //创建者（entity标识）
-        String creator = entityName;
+        String creator = MyApplication.entityName;
         //围栏名称
-        String fenceName = entityName + "_fence";
+        String fenceName = MyApplication.entityName + "_fence";
         //围栏描述
         String fenceDesc = "手机";
-        //监控对象列表（多个entityName，以英文逗号"," 分割）
-        String monitoredPersons = entityName;
-        //观察者列表（多个entityName，以英文逗号"," 分割）
-        String observers = entityName;
+        //监控对象列表（多个MyApplication.entityName，以英文逗号"," 分割）
+        String monitoredPersons = MyApplication.entityName;
+        //观察者列表（多个MyApplication.entityName，以英文逗号"," 分割）
+        String observers = MyApplication.entityName;
         //生效时间列表
         String validTimes = "0800,2300";
         //生效周期
@@ -1209,21 +1246,21 @@ public class MapTraceActivity extends Activity {
         int alarmCondition = 3;
 
         //创建圆形地理围栏
-        MyApplication.client.createCircularFence(serviceId, creator, fenceName, fenceDesc, monitoredPersons, observers,validTimes,
+        MyApplication.client.createCircularFence(MyApplication.serviceId, creator, fenceName, fenceDesc, monitoredPersons, observers,validTimes,
                 validCycle, validDate, validDays, coordType, center, radius, precision,alarmCondition, onGeoFenceListener);
     }
 
     private void updateFence(LatLng latLng) {
         // 围栏名称
-        String fenceName = entityName + "_fence";
+        String fenceName = MyApplication.entityName + "_fence";
         // 围栏ID
         int fenceId = this.fenceId;
         // 围栏描述
         String fenceDesc = "手机";
-        // 监控对象列表（多个entityName，以英文逗号"," 分割）
-        String monitoredPersons = entityName;
-        // 观察者列表（多个entityName，以英文逗号"," 分割）
-        String observers = entityName;
+        // 监控对象列表（多个MyApplication.entityName，以英文逗号"," 分割）
+        String monitoredPersons = MyApplication.entityName;
+        // 观察者列表（多个MyApplication.entityName，以英文逗号"," 分割）
+        String observers = MyApplication.entityName;
         // 生效时间列表
         String validTimes = "0800,2300";
         // 生效周期
@@ -1241,12 +1278,40 @@ public class MapTraceActivity extends Activity {
         // 报警条件（1：进入时触发提醒，2：离开时触发提醒，3：进入离开均触发提醒）
         int alarmCondition = 3;
 
-        MyApplication.client.updateCircularFence(serviceId, fenceName, fenceId, fenceDesc,
+        MyApplication.client.updateCircularFence(MyApplication.serviceId, fenceName, fenceId, fenceDesc,
                 monitoredPersons,
                 observers, validTimes, validCycle, validDate, validDays, coordType, center, radius, precision,alarmCondition,
                 onGeoFenceListener);
     }
 
+    protected class RefreshThread extends Thread {
+
+        protected boolean refresh = true;
+
+        @Override
+        public void run() {
+            // TODO Auto-generated method stub
+            Looper.prepare();
+            while (refresh) {
+                Log.i(TAG,"isTraceStarted:"+isTraceStarted);
+                // 轨迹服务开启成功后，调用queryEntityList()查询最新轨迹；
+                // 未开启轨迹服务时，调用queryRealtimeLoc()进行实时定位。
+                if (isTraceStarted) {
+                    queryEntityLocation();
+                } else {
+                    MyApplication.client.queryRealtimeLoc(MyApplication.serviceId, onEntityListener);
+                }
+
+                try {
+                    Thread.sleep(MyApplication.gatherInterval * 1000);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    System.out.println("线程休眠失败");
+                }
+            }
+            Looper.loop();
+        }
+    }
 
     @Override
     public void onPause() {
@@ -1261,6 +1326,7 @@ public class MapTraceActivity extends Activity {
             MyApplication.client.onDestroy();
         }
         trace_bmapView.onDestroy();
+        TraceUtil.unregisterReceiver(this);
     }
 
 

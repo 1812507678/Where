@@ -2,6 +2,7 @@ package haijun.root.where.util;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.util.TypedValue;
 
 /**
  * Created by root on 10/25/16.
@@ -30,5 +31,11 @@ public class MyUtil {
             } catch (Exception e) {
             }
     }
+
+    public static float dp2px(Context context, float dp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp,
+                context.getResources().getDisplayMetrics());
+    }
+
 
 }

@@ -39,7 +39,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".activity.MainActivity"></activity>
+        <activity android:name=".activity.MainActivity" />
 
         <meta-data
             android:name="com.baidu.lbsapi.API_KEY"
@@ -61,7 +61,9 @@
         <service
             android:name=".service.MonitorService"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true" />
+
+        <activity android:name=".activity.UserListActivity"></activity>
     </application>
 
 </manifest>

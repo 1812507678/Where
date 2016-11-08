@@ -31,12 +31,26 @@ public class MyApplication extends Application {
     /**
      * entity标识
      */
-    private String entityName = "c1";
+    public static String entityName = "c1";
 
     /**
      * 轨迹服务类型（0 : 不建立socket长连接， 1 : 建立socket长连接但不上传位置数据，2 : 建立socket长连接并上传位置数据）
      */
     private int traceType = 2;
+
+    /**
+     * 采集周期（单位 : 秒）
+     */
+    public static int gatherInterval = 5;
+
+    /**
+     * 打包周期（单位 : 秒）
+     */
+    public static int packInterval = 15;
+
+    // 设置协议类型，0为http，1为https
+    int protocoType = 1;
+
 
     public static SharedPreferences locationinf;
 
@@ -54,6 +68,8 @@ public class MyApplication extends Application {
         trace = new Trace(this, serviceId, entityName, traceType);
         // 设置定位模式
         client.setLocationMode(LocationMode.High_Accuracy);
+        client.setInterval(gatherInterval,packInterval);
+        client.setProtocolType(protocoType);
     }
 
 }

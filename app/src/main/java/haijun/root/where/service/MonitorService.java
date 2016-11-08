@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
+import android.util.Log;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ import haijun.root.where.application.MyApplication;
 
 public class MonitorService extends Service {
 
+    private static final String TAG = "MonitorService";
     public static boolean isCheck = false;
 
     public static boolean isRunning = false;
@@ -50,13 +52,12 @@ public class MonitorService extends Service {
                     }
 
                     if (!isServiceWork(getApplicationContext(), SERVICE_NAME)) {
-                        System.out.println("轨迹服务已停止，重启轨迹服务");
-
+                        Log.i(TAG,"轨迹服务已停止，重启轨迹服务");
                         if (null != MyApplication.client && null != MyApplication.trace) {
                             MyApplication.client.startTrace(MyApplication.trace);
                         }
                     } else {
-                        System.out.println("轨迹服务正在运行");
+                        Log.i(TAG,"轨迹服务正在运行");
                     }
 
                 }

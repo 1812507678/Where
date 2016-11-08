@@ -36,4 +36,15 @@ public class TraceUtil {
             isRegister = true;
         }
     }
+
+    public static void unregisterReceiver(Context context){
+        if (trackReceiver!=null){
+            context.unregisterReceiver(trackReceiver);
+            pm = null;
+            wakeLock = null;
+        }
+
+    }
+
+
 }
