@@ -2,14 +2,14 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="#13B9F5">
 
     <LinearLayout
         android:id="@+id/ll_map_top"
         android:layout_width="150dp"
         android:layout_height="35dp"
         android:orientation="horizontal"
-        android:background="#FFFFFF"
+        android:background="#13B9F5"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="3dp"
         android:layout_marginBottom="2dp">
@@ -20,7 +20,7 @@
             android:layout_weight="1"
             android:layout_height="35dp"
             android:text="轨迹追踪"
-            android:textColor="#FFFFFF"
+            android:textColor="#13B9F5"
             android:textSize="15sp"
             android:background="@drawable/bg_care_switch_lefton"
             android:gravity="center"/>
@@ -32,7 +32,7 @@
             android:text="历史轨迹"
             android:textSize="15sp"
             android:gravity="center"
-            android:textColor="#999999"
+            android:textColor="#FFFFFF"
             android:background="@drawable/bg_care_switch_rightoff"/>
 
     </LinearLayout>
@@ -304,6 +304,7 @@
             android:textColor="#6E6E6E"
             android:textSize="10sp"/>
     </LinearLayout>
+
 
 
 </RelativeLayout>

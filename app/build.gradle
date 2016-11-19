@@ -29,4 +29,5 @@ dependencies {
     compile files('libs/BaiduTraceSDK_v2_1_15.jar')
     compile files('libs/BaiduLBS_Android.jar')
     compile files('libs/gson-2.2.1.jar')
+    compile project(path: ':slidingmenu_library')
 }

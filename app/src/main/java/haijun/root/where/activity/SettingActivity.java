@@ -6,12 +6,11 @@ import android.os.Bundle;
 
 import haijun.root.where.R;
 
-public class UserListActivity extends Activity {
+public class SettingActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        setContentView(R.layout.activity_user_list);
+        setContentView(R.layout.activity_setting);
     }
 }
